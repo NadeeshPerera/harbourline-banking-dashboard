@@ -10,9 +10,9 @@ A full-stack **online banking dashboard**: accounts, statements, spending analyt
 ![.NET 8](https://img.shields.io/badge/.NET_8-512BD4?logo=dotnet&logoColor=white)
 ![EF Core](https://img.shields.io/badge/EF_Core-512BD4)
 
-**▶ Live demo:** _coming soon_
+### **▶ [Live demo: harbourline-banking-dashboard.vercel.app](https://harbourline-banking-dashboard.vercel.app)**
 
-<!-- screenshot: docs/screenshot.png -->
+[![Harbourline Bank overview: total balance, account cards, cash-flow chart, spending by category and recent activity](docs/screenshot.png)](https://harbourline-banking-dashboard.vercel.app)
 
 > **Harbourline Bank is fictional.** The hosted demo runs a browser-side ledger with the same rules as the API, so it works without a server. Run the API locally to use the real backend.
 > Demo sign-in: `alex.tan@demo.harbourline.sg` / `Demo@1234`
