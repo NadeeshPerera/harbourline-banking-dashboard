@@ -72,6 +72,9 @@ export interface TransactionQuery {
   pageSize?: number;
 }
 
+/** The filters of a TransactionQuery, without paging (used by the CSV export). */
+export type TransactionFilters = Omit<TransactionQuery, "page" | "pageSize">;
+
 export interface MonthlyCashflow {
   /** yyyy-mm */
   month: string;

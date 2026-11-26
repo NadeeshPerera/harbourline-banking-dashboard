@@ -2,7 +2,8 @@
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/auth/AuthProvider";
-import type { TransactionQuery, TransferRequest } from "@/lib/types";
+import { saveFile } from "@/lib/download";
+import type { TransactionFilters, TransactionQuery, TransferRequest } from "@/lib/types";
 
 /** Centralised query keys so invalidation stays consistent. */
 export const queryKeys = {
@@ -26,6 +27,18 @@ export function useTransactions(query: TransactionQuery) {
     queryFn: () => api.getTransactions(query),
     // Keep the current page on screen while the next one loads (no table flicker).
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Downloads every transaction matching the filters as CSV and saves it. */
+export function useExportTransactions() {
+  const { api } = useAuth();
+  return useMutation({
+    mutationFn: async (filters: TransactionFilters) => {
+      const file = await api.exportTransactions(filters);
+      saveFile(file);
+      return file;
+    },
   });
 }
 

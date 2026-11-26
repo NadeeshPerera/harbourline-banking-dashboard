@@ -5,6 +5,7 @@ import type {
   Payee,
   SpendingSummary,
   Transaction,
+  TransactionFilters,
   TransactionQuery,
   TransferRequest,
   TransferResult,
@@ -22,9 +23,17 @@ export interface BankApi {
   me(): Promise<User>;
   getAccounts(): Promise<Account[]>;
   getTransactions(query: TransactionQuery): Promise<Page<Transaction>>;
+  /** Every transaction matching the filters (all pages) as a CSV file. */
+  exportTransactions(filters: TransactionFilters): Promise<FileDownload>;
   getSpendingSummary(months: number): Promise<SpendingSummary>;
   getPayees(): Promise<Payee[]>;
   createTransfer(request: TransferRequest, idempotencyKey: string): Promise<TransferResult>;
+}
+
+/** A file returned by the API, ready to save. */
+export interface FileDownload {
+  filename: string;
+  blob: Blob;
 }
 
 /** Mirrors RFC 7807 ProblemDetails returned by the backend. */
