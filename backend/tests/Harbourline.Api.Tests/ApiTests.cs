@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Harbourline.Api.Common;
 using Harbourline.Api.Domain;
+using Harbourline.Api.Features.Banking;
 
 namespace Harbourline.Api.Tests;
 
@@ -49,6 +50,7 @@ public sealed class ApiTests : IAsyncLifetime
     [InlineData("/api/me")]
     [InlineData("/api/accounts")]
     [InlineData("/api/transactions")]
+    [InlineData("/api/transactions/export")]
     [InlineData("/api/analytics/summary")]
     public async Task Protected_endpoints_require_a_token(string url)
     {
@@ -110,6 +112,95 @@ public sealed class ApiTests : IAsyncLifetime
         var res = await client.GetAsync("/api/transactions?category=crypto");
         Assert.Equal(HttpStatusCode.BadRequest, res.StatusCode);
     }
+
+    // ---------- CSV export ----------
+
+    private static async Task<string[]> CsvLines(HttpResponseMessage res)
+    {
+        var text = await res.Content.ReadAsStringAsync();
+        return text.Split("\r\n", StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    [Fact]
+    public async Task Export_returns_every_filtered_row_as_a_csv_download()
+    {
+        var client = await _factory.SignedInClientAsync();
+        var page = await client.GetFromJsonAsync<PageDto<TransactionDto>>("/api/transactions?category=dining&pageSize=5", Json);
+
+        var res = await client.GetAsync("/api/transactions/export?category=dining");
+        res.EnsureSuccessStatusCode();
+        Assert.Equal("text/csv", res.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("attachment", res.Content.Headers.ContentDisposition?.DispositionType);
+        Assert.Equal("harbourline-transactions-2026-11-15.csv", res.Content.Headers.ContentDisposition?.FileName);
+
+        var bytes = await res.Content.ReadAsByteArrayAsync();
+        Assert.Equal(new byte[] { 0xEF, 0xBB, 0xBF }, bytes[..3]); // UTF-8 BOM for Excel
+
+        var lines = await CsvLines(res);
+        Assert.Equal("Date (SGT),Description,Reference,Category,Account,Amount (SGD),Balance (SGD)", lines[0].TrimStart('\uFEFF'));
+        // All pages, not just the first one.
+        Assert.True(page!.Total > 5);
+        Assert.Equal(page.Total, lines.Length - 1);
+        Assert.All(lines[1..], l => Assert.Contains(",dining,", l));
+    }
+
+    [Fact]
+    public async Task Export_formats_money_from_cents_and_dates_in_Singapore_time()
+    {
+        var client = await _factory.SignedInClientAsync();
+        var latest = (await client.GetFromJsonAsync<PageDto<TransactionDto>>("/api/transactions?accountId=a-cur&pageSize=1", Json))!.Items[0];
+
+        var lines = await CsvLines(await client.GetAsync("/api/transactions/export?accountId=a-cur"));
+        var expectedDate = latest.PostedAt.AddHours(8).ToString("yyyy-MM-dd HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+        Assert.StartsWith(expectedDate + ",", lines[1]);
+        Assert.EndsWith($",{TransactionCsv.FormatCents(latest.AmountCents)},{TransactionCsv.FormatCents(latest.BalanceAfterCents)}", lines[1]);
+    }
+
+    [Fact]
+    public async Task Export_escapes_commas_and_quotes_and_neutralises_formulas()
+    {
+        var client = await _factory.SignedInClientAsync();
+        (await Transfer(client, ToPayee("a-cur", "p-1", 1_050, "Dinner, \"Ah Hock\""))).EnsureSuccessStatusCode();
+        (await Transfer(client, ToPayee("a-cur", "p-1", 2_000, "=HYPERLINK(\"x\")"))).EnsureSuccessStatusCode();
+
+        var dinner = await CsvLines(await client.GetAsync("/api/transactions/export?q=Ah%20Hock"));
+        Assert.Equal(2, dinner.Length);
+        Assert.Contains(",\"Dinner, \"\"Ah Hock\"\"\",transfer,Everyday Current,-10.50,", dinner[1]);
+
+        var formula = await CsvLines(await client.GetAsync("/api/transactions/export?q=HYPERLINK"));
+        Assert.Contains(",\"'=HYPERLINK(\"\"x\"\")\",", formula[1]);
+    }
+
+    [Fact]
+    public async Task Export_only_contains_the_signed_in_customers_transactions_and_validates_filters()
+    {
+        var other = await _factory.SignedInClientAsync("sam.lee@demo.harbourline.sg", "Other@1234");
+        var lines = await CsvLines(await other.GetAsync("/api/transactions/export"));
+        Assert.Single(lines); // header only: Sam has no transactions
+
+        var leak = await CsvLines(await other.GetAsync("/api/transactions/export?accountId=a-cur"));
+        Assert.Single(leak);
+
+        var bad = await other.GetAsync("/api/transactions/export?category=crypto");
+        Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(0L, "0.00")]
+    [InlineData(5L, "0.05")]
+    [InlineData(123_450L, "1234.50")]
+    [InlineData(-29L, "-0.29")]
+    [InlineData(-100_000_00L, "-100000.00")]
+    public void FormatCents_uses_integer_maths(long cents, string expected) =>
+        Assert.Equal(expected, TransactionCsv.FormatCents(cents));
+
+    [Theory]
+    [InlineData("plain", "plain")]
+    [InlineData("a,b", "\"a,b\"")]
+    [InlineData("say \"hi\"", "\"say \"\"hi\"\"\"")]
+    [InlineData("two\nlines", "\"two\nlines\"")]
+    public void Escape_quotes_fields_only_when_needed(string field, string expected) =>
+        Assert.Equal(expected, TransactionCsv.Escape(field));
 
     // ---------- Transfers ----------
 
