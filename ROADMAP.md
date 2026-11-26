@@ -11,7 +11,6 @@ Rules for every item:
 
 ## Backlog
 
-- [ ] **1. Export transactions to CSV.** Add an "Export CSV" button on Transactions that exports the *current filters* (all pages). Backend: `GET /api/transactions/export?…` returns `text/csv` with a correct filename. Escape commas and quotes properly; test it.
 - [ ] **2. Dark mode.** System preference plus a toggle in the sidebar, saved in `localStorage`. Charts and badges must keep WCAG AA contrast in both themes.
 - [ ] **3. Monthly category budgets.** Let users set a budget per category (e.g. Dining S$400). Show progress bars on Overview, amber at 80% and red at 100%. Backend: `GET/PUT /api/budgets`; the demo ledger mirrors it.
 - [ ] **4. Add and manage payees.** "Add payee" form (name, bank, account number with format validation), plus delete with confirmation. New payees get a 12-hour cooling-off period (max S$1,000 per transfer) as a fraud control; enforce it on the server.
@@ -30,4 +29,4 @@ Rules for every item:
 
 ## Done
 
-_Nothing yet: the first scheduled PR will land here._
+- [x] **1. Export transactions to CSV.** "Export CSV" on Transactions downloads every row matching the current filters; `GET /api/transactions/export` returns an RFC 4180 `text/csv` attachment (Singapore-time dates, cents-exact amounts, quote/comma escaping, formula-injection guard), mirrored by the demo ledger.
