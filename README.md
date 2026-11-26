@@ -24,7 +24,7 @@ A full-stack **online banking dashboard**: accounts, statements, spending analyt
 | | |
 |---|---|
 | 💳 **Accounts overview** | Total balance, account cards with masked numbers, a 6-month cash-flow chart, spending by category with the change from last month, recent activity. |
-| 📄 **Transactions** | Search, account, category and date-range filters, **stored in the URL** so views can be shared and the back button works. Server-side pagination with running balances. |
+| 📄 **Transactions** | Search, account, category and date-range filters, **stored in the URL** so views can be shared and the back button works. Server-side pagination with running balances. **Export CSV** downloads every row matching the current filters (all pages), with Singapore-time dates and spreadsheet-safe escaping. |
 | 💸 **Transfers** | Form → review → receipt. Pay your own accounts or saved payees. |
 | 🛡️ **Banking rules** (enforced on the server) | Balance checks; a **S$5,000 per day** limit to third parties (Singapore calendar day); **idempotency keys**, so retries and double-clicks never pay twice; a reused key with a different body returns `409`; optimistic concurrency, so simultaneous transfers can't overspend. |
 | 📊 **Analytics** | Income and expenses per month. Transfers between your own accounts are excluded, as a real bank would. |
@@ -75,8 +75,8 @@ The API creates and seeds a local SQLite database on first run. Development uses
 
 | Layer | Tooling | What's covered |
 |---|---|---|
-| Frontend | Vitest + React Testing Library | Money parsing and formatting, every ledger rule, the transfer flow end to end (validation, double-click safety, server errors) |
-| Backend | xUnit + `WebApplicationFactory` + in-memory SQLite | Auth, data isolation between customers, filters and pagination, idempotency, `409` on key reuse, insufficient funds, daily-limit reset at SG midnight, token expiry, analytics |
+| Frontend | Vitest + React Testing Library | Money parsing and formatting, every ledger rule, the transfer flow end to end (validation, double-click safety, server errors), CSV escaping and the export download |
+| Backend | xUnit + `WebApplicationFactory` + in-memory SQLite | Auth, data isolation between customers, filters and pagination, CSV export (escaping, all pages, isolation), idempotency, `409` on key reuse, insufficient funds, daily-limit reset at SG midnight, token expiry, analytics |
 
 ```bash
 cd frontend && npm test
@@ -87,7 +87,7 @@ CI (GitHub Actions) runs lint, type-check, tests and build for the frontend, and
 
 ## Roadmap
 
-See **[ROADMAP.md](ROADMAP.md)**: CSV export, budgets, OTP for large transfers, scheduled payments, SignalR live balances, refresh-token cookies, Playwright and more.
+See **[ROADMAP.md](ROADMAP.md)**: dark mode, budgets, OTP for large transfers, scheduled payments, SignalR live balances, refresh-token cookies, Playwright and more.
 
 ## Author
 

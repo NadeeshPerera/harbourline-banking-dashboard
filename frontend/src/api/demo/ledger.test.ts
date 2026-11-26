@@ -137,3 +137,28 @@ describe("queries", () => {
     expect(after.categories.some((c) => c.category === "salary")).toBe(false);
   });
 });
+
+describe("CSV export", () => {
+  it("exports every matching transaction across all pages, newest first", () => {
+    const ledger = makeLedger();
+    const all = ledger.getTransactions({ category: "dining", pageSize: 100 });
+    expect(all.total).toBeGreaterThan(20); // more than one page in the UI
+
+    const lines = ledger.exportCsv({ category: "dining" }).trimEnd().split("\r\n");
+    expect(lines[0]).toBe("Date (SGT),Description,Reference,Category,Account,Amount (SGD),Balance (SGD)");
+    expect(lines).toHaveLength(all.total + 1);
+    expect(lines.slice(1).every((l) => l.includes(",dining,"))).toBe(true);
+    expect(lines[1]).toContain(all.items[0].description);
+  });
+
+  it("includes new transfers with escaped references", () => {
+    const ledger = makeLedger();
+    ledger.createTransfer(
+      { fromAccountId: "a-cur", to: { type: "payee", payeeId: "p-1" }, amountCents: 1_050, reference: 'Dinner, "Ah Hock"' },
+      "key-csv",
+    );
+    const lines = ledger.exportCsv({ q: "ah hock" }).trimEnd().split("\r\n");
+    expect(lines).toHaveLength(2);
+    expect(lines[1]).toContain(',Transfer to Mei Ling Wong,"Dinner, ""Ah Hock""",transfer,Everyday Current,-10.50,');
+  });
+});

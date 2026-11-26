@@ -64,7 +64,9 @@ builder.Services.AddProblemDetails();
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins(allowedOrigins).AllowAnyMethod().WithHeaders("Authorization", "Content-Type", "Idempotency-Key")));
+    p.WithOrigins(allowedOrigins).AllowAnyMethod().WithHeaders("Authorization", "Content-Type", "Idempotency-Key")
+        // Lets the browser read the CSV export's filename on a cross-origin download.
+        .WithExposedHeaders("Content-Disposition")));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(o =>

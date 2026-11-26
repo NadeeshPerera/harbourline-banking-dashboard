@@ -1,5 +1,6 @@
-import type { TransactionQuery, TransferRequest } from "@/lib/types";
-import { ApiError, type BankApi } from "../client";
+import { UTF8_BOM, exportFileName } from "@/lib/transactionsCsv";
+import type { TransactionFilters, TransactionQuery, TransferRequest } from "@/lib/types";
+import { ApiError, type BankApi, type FileDownload } from "../client";
 import { Ledger } from "./ledger";
 import { DEMO_PASSWORD, DEMO_PAYEES, DEMO_USER, buildSeed } from "./seed";
 
@@ -11,11 +12,14 @@ export class DemoBankApi implements BankApi {
 
   private readonly latencyMs: number;
 
+  private readonly now: () => Date;
+
   constructor(
     private readonly getToken: () => string | null,
     { latencyMs = 350, now = () => new Date() }: { latencyMs?: number; now?: () => Date } = {},
   ) {
     this.latencyMs = latencyMs;
+    this.now = now;
     const { accounts, transactions } = buildSeed(now());
     this.ledger = new Ledger(accounts, transactions, DEMO_PAYEES, now);
   }
@@ -49,6 +53,14 @@ export class DemoBankApi implements BankApi {
 
   getTransactions(query: TransactionQuery) {
     return this.respond(() => this.ledger.getTransactions(query));
+  }
+
+  async exportTransactions(filters: TransactionFilters): Promise<FileDownload> {
+    const csv = await this.respond(() => this.ledger.exportCsv(filters));
+    return {
+      filename: exportFileName(this.now()),
+      blob: new Blob([UTF8_BOM + csv], { type: "text/csv;charset=utf-8" }),
+    };
   }
 
   getSpendingSummary(months: number) {

@@ -11,10 +11,12 @@ import {
   type Payee,
   type SpendingSummary,
   type Transaction,
+  type TransactionFilters,
   type TransactionQuery,
   type TransferRequest,
   type TransferResult,
 } from "@/lib/types";
+import { buildTransactionsCsv } from "@/lib/transactionsCsv";
 import { ApiError } from "../client";
 
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -53,17 +55,7 @@ export class Ledger {
   getTransactions(query: TransactionQuery): Page<Transaction> {
     const page = Math.max(1, query.page ?? 1);
     const pageSize = Math.min(100, Math.max(1, query.pageSize ?? 20));
-    const q = query.q?.trim().toLowerCase();
-
-    const filtered = this.transactions.filter((t) => {
-      if (query.accountId && t.accountId !== query.accountId) return false;
-      if (query.category && t.category !== query.category) return false;
-      const day = dayKey(new Date(t.postedAt));
-      if (query.from && day < query.from) return false;
-      if (query.to && day > query.to) return false;
-      if (q && !`${t.description} ${t.reference ?? ""}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
+    const filtered = this.filter(query);
 
     return {
       items: filtered.slice((page - 1) * pageSize, page * pageSize),
@@ -71,6 +63,25 @@ export class Ledger {
       pageSize,
       total: filtered.length,
     };
+  }
+
+  /** Every transaction matching the filters (all pages), newest first, as CSV. */
+  exportCsv(filters: TransactionFilters): string {
+    const accountNames = Object.fromEntries([...this.accounts.values()].map((a) => [a.id, a.name]));
+    return buildTransactionsCsv(this.filter(filters), accountNames);
+  }
+
+  private filter(filters: TransactionFilters): Transaction[] {
+    const q = filters.q?.trim().toLowerCase();
+    return this.transactions.filter((t) => {
+      if (filters.accountId && t.accountId !== filters.accountId) return false;
+      if (filters.category && t.category !== filters.category) return false;
+      const day = dayKey(new Date(t.postedAt));
+      if (filters.from && day < filters.from) return false;
+      if (filters.to && day > filters.to) return false;
+      if (q && !`${t.description} ${t.reference ?? ""}`.toLowerCase().includes(q)) return false;
+      return true;
+    });
   }
 
   /** Income and expenses per month. Transfers between own accounts are excluded. */

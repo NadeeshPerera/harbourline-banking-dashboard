@@ -3,11 +3,12 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { useAccounts, useTransactions } from "@/api/queries";
+import { ExportCsvButton } from "@/components/ExportCsvButton";
 import { ErrorState, Skeleton } from "@/components/states";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { CATEGORY_META } from "@/lib/categories";
 import { formatCents, formatSignedCents } from "@/lib/money";
-import { CATEGORIES, type Category, type TransactionQuery } from "@/lib/types";
+import { CATEGORIES, type Category, type TransactionFilters, type TransactionQuery } from "@/lib/types";
 
 const PAGE_SIZE = 15;
 const dateTimeFmt = new Intl.DateTimeFormat("en-SG", { day: "2-digit", month: "short", year: "numeric" });
@@ -18,12 +19,15 @@ function TransactionsView() {
   const params = useSearchParams();
 
   // The URL is the source of truth for filters.
-  const query: TransactionQuery = {
+  const filters: TransactionFilters = {
     accountId: params.get("accountId") ?? undefined,
     category: (params.get("category") as Category | null) ?? undefined,
     from: params.get("from") ?? undefined,
     to: params.get("to") ?? undefined,
     q: params.get("q") ?? undefined,
+  };
+  const query: TransactionQuery = {
+    ...filters,
     page: Number(params.get("page") ?? 1),
     pageSize: PAGE_SIZE,
   };
@@ -107,7 +111,10 @@ function TransactionsView() {
           <h2 id="results-heading" className="text-sm font-medium text-slate-600" aria-live="polite">
             {data ? `${data.total} transaction${data.total === 1 ? "" : "s"}` : "Loading…"}
           </h2>
-          {isFetching && !isPending && <span className="text-xs text-slate-400">Updating…</span>}
+          <div className="flex items-center gap-3">
+            {isFetching && !isPending && <span className="text-xs text-slate-400">Updating…</span>}
+            <ExportCsvButton filters={filters} total={data?.total} />
+          </div>
         </div>
 
         {isPending ? (
