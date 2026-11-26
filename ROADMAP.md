@@ -29,4 +29,4 @@ Rules for every item:
 
 ## Done
 
-- [x] **1. Export transactions to CSV.** "Export CSV" on Transactions downloads every row matching the current filters; `GET /api/transactions/export` returns an RFC 4180 `text/csv` attachment (Singapore-time dates, cents-exact amounts, quote/comma escaping, formula-injection guard), mirrored by the demo ledger.
+- [x] **1. Export transactions to CSV.** "Export CSV" on Transactions downloads every row matching the current filters; `GET /api/transactions/export` returns an RFC 4180 `text/csv` attachment (Singapore-time dates, cents-exact amounts, quote/comma escaping, formula-injection guard), mirrored by the demo ledger. ([#1](https://github.com/NadeeshPerera/harbourline-banking-dashboard/pull/1))
